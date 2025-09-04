@@ -26,6 +26,32 @@ def _save_b64_image(b64: str, out_path: Path):
     with open(out_path, "wb") as f:
         f.write(base64.b64decode(b64))
 
+def _extract_id_from_filename(filepath: Path) -> str:
+    """Extract ID from filename by splitting on underscore and taking first part."""
+    filename = filepath.stem  # Get filename without extension
+    # Split on underscore and take the first part as ID
+    parts = filename.split('_')
+    return parts[0] if parts else filename
+
+def _should_files_match(passport_path: Path, face_photo_path: Path) -> bool:
+    """Check if files should match based on their filename IDs."""
+    passport_id = _extract_id_from_filename(passport_path)
+    face_photo_id = _extract_id_from_filename(face_photo_path)
+    
+    # Return True if both IDs are non-empty and match
+    return bool(passport_id and face_photo_id and passport_id == face_photo_id)
+
+def _assess_match_result(should_match: bool, actual_match: bool) -> str:
+    """Assess the difference between expected and actual match results."""
+    if should_match and actual_match:
+        return "correct_positive"
+    elif not should_match and not actual_match:
+        return "correct_negative"
+    elif should_match and not actual_match:
+        return "false_negative"
+    else:  # not should_match and actual_match
+        return "false_positive"
+
 
 def run() -> None:
     maid_dirs = [p for p in DATA_ROOT.iterdir() if p.is_dir()]
@@ -56,12 +82,21 @@ def run() -> None:
                 _save_b64_image(res.passport_crop_b64, CROPS_DIR / maid_id / "passport_crop.jpg")
                 _save_b64_image(res.selfie_crop_b64,   CROPS_DIR / maid_id / "selfie_crop.jpg")
 
+            # Check if files should match based on filename IDs
+            should_match = _should_files_match(passport, selfie)
+            actual_match = bool(res.decision)
+            match_assessment = _assess_match_result(should_match, actual_match)
+
             rows.append({
                 "maid_id": maid_id,
                 "passport_path": str(passport),
                 "face_photo_path": str(selfie),
+                "passport_id": _extract_id_from_filename(passport),
+                "face_photo_id": _extract_id_from_filename(selfie),
+                "should_match": should_match,
                 "similarity": res.similarity,
-                "match": bool(res.decision),
+                "match": actual_match,
+                "match_assessment": match_assessment,
                 "reason": res.reason,
                 "status": "ok",
             })
@@ -71,6 +106,13 @@ def run() -> None:
                 "maid_id": maid_id,
                 "passport_path": str(passport) if passport else "",
                 "face_photo_path": str(selfie) if selfie else "",
+                "passport_id": _extract_id_from_filename(passport) if passport else "",
+                "face_photo_id": _extract_id_from_filename(selfie) if selfie else "",
+                "should_match": False,
+                "similarity": 0.0,
+                "match": False,
+                "match_assessment": "error",
+                "reason": f"error:{e}",
                 "status": f"error:{e}",
             })
 
@@ -86,7 +128,14 @@ def run() -> None:
     if successful_matches > 0:
         matches = len(df[(df['status'] == 'ok') & (df['match'] == True)])
         avg_similarity = df[df['status'] == 'ok']['similarity'].mean()
+        
+        # Additional statistics for filename-based matching
+        should_match_count = len(df[(df['status'] == 'ok') & (df['should_match'] == True)])
+        correct_predictions = len(df[(df['status'] == 'ok') & (df['match_assessment'].isin(['correct_positive', 'correct_negative']))])
+        accuracy = correct_predictions / successful_matches if successful_matches > 0 else 0
+        
         print(f"📊 Processed {total_maids} maids: {successful_matches} successful, {matches} matches (avg similarity: {avg_similarity:.3f})")
+        print(f"📋 Filename analysis: {should_match_count} should match, {correct_predictions} correct predictions (accuracy: {accuracy:.1%})")
     else:
         print(f"📊 Processed {total_maids} maids: {successful_matches} successful")
     

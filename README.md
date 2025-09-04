@@ -168,9 +168,10 @@ if passport and selfie:
 ### CSV Results
 
 ```csv
-maid_id,passport_path,face_photo_path,similarity,match,reason,status
-10001,data/faces/10001/passport.jpg,data/faces/10001/selfie.jpg,0.913,true,ok,ok
-10002,data/faces/10002/kenya_passport.png,data/faces/10002/face_1.jpg,0.712,false,below threshold 0.85,ok
+maid_id,passport_path,face_photo_path,passport_id,face_photo_id,should_match,similarity,match,match_assessment,reason,status
+10001,data/faces/10001/123_passport.jpg,data/faces/10001/123_selfie.jpg,123,123,true,0.913,true,correct_positive,ok,ok
+10002,data/faces/10002/456_passport.png,data/faces/10002/789_face.jpg,456,789,false,0.712,false,correct_negative,below threshold 0.85,ok
+10003,data/faces/10003/111_passport.jpg,data/faces/10003/111_photo.jpg,111,111,true,0.650,false,false_negative,below threshold 0.85,ok
 ```
 
 ### Column Descriptions
@@ -178,8 +179,16 @@ maid_id,passport_path,face_photo_path,similarity,match,reason,status
 * **maid_id**: Unique maid identifier
 * **passport_path**: Path to passport image used
 * **face_photo_path**: Path to face photo (selfie) image used
+* **passport_id**: ID extracted from passport filename (first part before underscore)
+* **face_photo_id**: ID extracted from face photo filename (first part before underscore)
+* **should_match**: Boolean indicating if files should match based on filename IDs (true/false)
 * **similarity**: Face similarity score (0.0-1.0)
 * **match**: Boolean match result based on threshold (true/false)
+* **match_assessment**: Assessment of prediction accuracy:
+  - `correct_positive`: Should match and does match ✅
+  - `correct_negative`: Shouldn't match and doesn't match ✅
+  - `false_negative`: Should match but doesn't match ❌
+  - `false_positive`: Shouldn't match but does match ❌
 * **reason**: Match decision reason
 * **status**: Processing status (`ok`, `error:...`, `skipped:...`)
 
