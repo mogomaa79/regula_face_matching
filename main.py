@@ -35,12 +35,12 @@ def run() -> None:
         maid_id = maid_dir.name
         images = list_image_files(maid_dir)
         if len(images) < 2:
-            rows.append({"inputs.maid_id": maid_id, "status": "skipped:not_enough_images"})
+            rows.append({"maid_id": maid_id, "status": "skipped:not_enough_images"})
             continue
 
         passport, selfie = choose_passport_and_selfie(images)
         if not passport or not selfie:
-            rows.append({"inputs.maid_id": maid_id, "status": "skipped:cant_choose_pair"})
+            rows.append({"maid_id": maid_id, "status": "skipped:cant_choose_pair"})
             continue
 
         try:
@@ -57,20 +57,20 @@ def run() -> None:
                 _save_b64_image(res.selfie_crop_b64,   CROPS_DIR / maid_id / "selfie_crop.jpg")
 
             rows.append({
-                "inputs.maid_id": maid_id,
-                "inputs.passport_path": str(passport),
-                "inputs.selfie_path": str(selfie),
-                "outputs.similarity": res.similarity,
-                "outputs.match": res.decision,
-                "outputs.reason": res.reason,
+                "maid_id": maid_id,
+                "passport_path": str(passport),
+                "face_photo_path": str(selfie),
+                "similarity": res.similarity,
+                "match": bool(res.decision),
+                "reason": res.reason,
                 "status": "ok",
             })
 
         except Exception as e:
             rows.append({
-                "inputs.maid_id": maid_id,
-                "inputs.passport_path": str(passport) if passport else "",
-                "inputs.selfie_path": str(selfie) if selfie else "",
+                "maid_id": maid_id,
+                "passport_path": str(passport) if passport else "",
+                "face_photo_path": str(selfie) if selfie else "",
                 "status": f"error:{e}",
             })
 
@@ -84,8 +84,8 @@ def run() -> None:
     total_maids = len(df)
     successful_matches = len(df[df['status'] == 'ok'])
     if successful_matches > 0:
-        matches = len(df[(df['status'] == 'ok') & (df['outputs.match'] == True)])
-        avg_similarity = df[df['status'] == 'ok']['outputs.similarity'].mean()
+        matches = len(df[(df['status'] == 'ok') & (df['match'] == True)])
+        avg_similarity = df[df['status'] == 'ok']['similarity'].mean()
         print(f"📊 Processed {total_maids} maids: {successful_matches} successful, {matches} matches (avg similarity: {avg_similarity:.3f})")
     else:
         print(f"📊 Processed {total_maids} maids: {successful_matches} successful")

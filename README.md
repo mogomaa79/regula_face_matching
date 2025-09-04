@@ -168,19 +168,19 @@ if passport and selfie:
 ### CSV Results
 
 ```csv
-inputs.maid_id,inputs.passport_path,inputs.selfie_path,outputs.similarity,outputs.match,outputs.reason,status
-10001,data/faces/10001/passport.jpg,data/faces/10001/selfie.jpg,0.913,True,ok,ok
-10002,data/faces/10002/kenya_passport.png,data/faces/10002/face_1.jpg,0.712,False,below threshold 0.85,ok
+maid_id,passport_path,face_photo_path,similarity,match,reason,status
+10001,data/faces/10001/passport.jpg,data/faces/10001/selfie.jpg,0.913,true,ok,ok
+10002,data/faces/10002/kenya_passport.png,data/faces/10002/face_1.jpg,0.712,false,below threshold 0.85,ok
 ```
 
 ### Column Descriptions
 
-* **inputs.maid_id**: Unique maid identifier
-* **inputs.passport_path**: Path to passport image used
-* **inputs.selfie_path**: Path to selfie image used
-* **outputs.similarity**: Face similarity score (0.0-1.0)
-* **outputs.match**: Boolean match result based on threshold
-* **outputs.reason**: Match decision reason
+* **maid_id**: Unique maid identifier
+* **passport_path**: Path to passport image used
+* **face_photo_path**: Path to face photo (selfie) image used
+* **similarity**: Face similarity score (0.0-1.0)
+* **match**: Boolean match result based on threshold (true/false)
+* **reason**: Match decision reason
 * **status**: Processing status (`ok`, `error:...`, `skipped:...`)
 
 ### Face Crops (Optional)
