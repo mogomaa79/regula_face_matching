@@ -1,0 +1,8 @@
+regula_facesdk_webclient>=7.1
+python-dotenv>=1.0
+pandas>=2.2
+tqdm>=4.66
+# optional (only if you want to upload to Sheets)
+gspread>=6.1
+google-auth-oauthlib>=1.2
+google-auth>=2.34
