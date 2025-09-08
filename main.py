@@ -1,5 +1,5 @@
 from __future__ import annotations
-import os, base64
+import os
 from pathlib import Path
 from typing import List, Dict
 import pandas as pd
@@ -14,16 +14,7 @@ load_dotenv()
 
 DATA_ROOT = Path(os.getenv("DATA_ROOT", "data/CC"))
 RESULTS_CSV = Path(os.getenv("RESULTS_CSV", "results/CC_results.csv"))
-THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.85"))
-SAVE_CROPS = os.getenv("SAVE_CROPS", "false").lower() == "true"
-CROPS_DIR = Path(os.getenv("CROPS_DIR", "results/crops"))
-
-def _save_b64_image(b64: str, out_path: Path):
-    if not b64:
-        return
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_path, "wb") as f:
-        f.write(base64.b64decode(b64))
+THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.80"))
 
 def _extract_id_from_filename(filepath: Path) -> str:
     """Extract ID from filename by splitting on underscore and taking first part."""
@@ -71,14 +62,8 @@ def run() -> None:
             res = match_passport_and_selfie(
                 passport.read_bytes(),
                 selfie.read_bytes(),
-                threshold=THRESHOLD,
-                save_crops=SAVE_CROPS
+                threshold=THRESHOLD
             )
-
-            # Save crops for QA/debug
-            if SAVE_CROPS:
-                _save_b64_image(res.passport_crop_b64, CROPS_DIR / maid_id / "passport_crop.jpg")
-                _save_b64_image(res.selfie_crop_b64,   CROPS_DIR / maid_id / "selfie_crop.jpg")
 
             # Check if files should match based on filename IDs
             should_match = _should_files_match(passport, selfie)
@@ -118,31 +103,9 @@ def run() -> None:
     RESULTS_CSV.parent.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame(rows)
     df.to_csv(RESULTS_CSV, index=False)
-    print(f"💾 Saved results: {RESULTS_CSV}")
-    
-    # Show summary
-    total_maids = len(df)
-    successful_matches = len(df[df['status'] == 'ok'])
-    if successful_matches > 0:
-        matches = len(df[(df['status'] == 'ok') & (df['match'] == True)])
-        avg_similarity = df[df['status'] == 'ok']['similarity'].mean()
-        
-        # Additional statistics for filename-based matching
-        should_match_count = len(df[(df['status'] == 'ok') & (df['should_match'] == True)])
-        correct_predictions = len(df[(df['status'] == 'ok') & (df['match_assessment'].isin(['correct_positive', 'correct_negative']))])
-        accuracy = correct_predictions / successful_matches if successful_matches > 0 else 0
-        
-        print(f"📊 Processed {total_maids} maids: {successful_matches} successful, {matches} matches (avg similarity: {avg_similarity:.3f})")
-        print(f"📋 Filename analysis: {should_match_count} should match, {correct_predictions} correct predictions (accuracy: {accuracy:.1%})")
-    else:
-        print(f"📊 Processed {total_maids} maids: {successful_matches} successful")
     
     # Upload to Google Sheets
-    upload_success = upload_to_sheets(RESULTS_CSV)
-    if upload_success:
-        print(f"🎉 Face matching complete! Results saved and uploaded.")
-    else:
-        print(f"⚠️  Face matching complete! Results saved locally (upload failed).")
+    upload_to_sheets(RESULTS_CSV)
 
 if __name__ == "__main__":
     run()

@@ -81,13 +81,15 @@ nano .env
 FACE_API_URL=http://localhost:41101
 FACE_MATCH_THRESHOLD=0.85
 
+# API Rate Limiting & Timeouts
+API_TIMEOUT=30
+API_MAX_RETRIES=3
+API_RETRY_DELAY=1.0
+API_TIMEOUT_RETRY_WAIT=30
+
 # Data paths
 DATA_ROOT=data/faces
 RESULTS_CSV=results/face_results.csv
-CROPS_DIR=results/crops
-
-# Features
-SAVE_CROPS=true
 
 # Google Sheets (optional)
 GOOGLE_SHEET_ID=your_sheet_id_here
@@ -172,11 +174,9 @@ if passport and selfie:
     result = match_passport_and_selfie(
         passport.read_bytes(),
         selfie.read_bytes(),
-        threshold=0.85,
-        save_crops=True
+        threshold=0.85
     )
-    print(f"Similarity: {result.similarity:.3f}")
-    print(f"Match: {result.decision}")
+    # result.similarity and result.decision available for processing
 ```
 
 ## 📊 Output Format
@@ -208,15 +208,40 @@ maid_id,passport_path,face_photo_path,passport_id,face_photo_id,should_match,sim
 * **reason**: Match decision reason
 * **status**: Processing status (`ok`, `error:...`, `skipped:...`)
 
-### Face Crops (Optional)
+## ⚡ API Rate Limiting & Timeout Handling
 
-When `SAVE_CROPS=true`, aligned face crops are saved to:
+The face matching system includes robust timeout and retry mechanisms to handle API rate limits and network issues:
 
-```
-results/crops/
-├── <MAID_ID>/
-│   ├── passport_crop.jpg
-│   └── selfie_crop.jpg
+### Configuration Options
+
+* **`API_TIMEOUT`**: Base timeout for API requests (default: 30 seconds)
+* **`API_MAX_RETRIES`**: Maximum number of retry attempts (default: 3)
+* **`API_RETRY_DELAY`**: Base delay for exponential backoff (default: 1.0 seconds)
+* **`API_TIMEOUT_RETRY_WAIT`**: Fixed wait time after timeout errors (default: 30 seconds)
+
+### Retry Behavior
+
+* **Rate Limiting (HTTP 429)**: Automatically retries with exponential backoff + jitter
+* **Timeouts**: Fixed 30-second wait between timeout retries (configurable)
+* **No Results/Invalid JSON**: Fixed 30-second wait (likely API overload)
+* **No Valid Similarities**: Immediate failure (no retry)
+* **Network Errors**: Retries transient network failures with exponential backoff
+* **Exponential Backoff**: Delay = (2^attempt) + random(0-1) seconds (rate limits & network errors only)
+
+### Example Configuration
+
+```ini
+# Conservative (longer timeouts, more retries)
+API_TIMEOUT=60
+API_MAX_RETRIES=5
+API_RETRY_DELAY=2.0
+API_TIMEOUT_RETRY_WAIT=45
+
+# Aggressive (shorter timeouts, fewer retries)
+API_TIMEOUT=15
+API_MAX_RETRIES=2
+API_RETRY_DELAY=0.5
+API_TIMEOUT_RETRY_WAIT=15
 ```
 
 ## 🎯 Face Matching Thresholds
