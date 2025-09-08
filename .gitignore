@@ -12,6 +12,9 @@ data/
 credentials.json
 token.pickle
 
+rejected_CC.csv
+rejected_MV.csv
+
 # Distribution / packaging
 .Python
 build/
