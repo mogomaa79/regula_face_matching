@@ -1,7 +1,6 @@
 from __future__ import annotations
 import os, base64
 from pathlib import Path
-from dataclasses import asdict
 from typing import List, Dict
 import pandas as pd
 from tqdm import tqdm
@@ -13,9 +12,9 @@ from src.utils.sheets_uploader import upload_to_sheets
 
 load_dotenv()
 
-DATA_ROOT = Path(os.getenv("DATA_ROOT", "data/faces"))
-RESULTS_CSV = Path(os.getenv("RESULTS_CSV", "results/face_results.csv"))
-THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.85"))
+DATA_ROOT = Path(os.getenv("DATA_ROOT", "data/MV"))
+RESULTS_CSV = Path(os.getenv("RESULTS_CSV", "results/MV_results.csv"))
+THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.90"))
 SAVE_CROPS = os.getenv("SAVE_CROPS", "false").lower() == "true"
 CROPS_DIR = Path(os.getenv("CROPS_DIR", "results/crops"))
 
@@ -28,8 +27,7 @@ def _save_b64_image(b64: str, out_path: Path):
 
 def _extract_id_from_filename(filepath: Path) -> str:
     """Extract ID from filename by splitting on underscore and taking first part."""
-    filename = filepath.stem  # Get filename without extension
-    # Split on underscore and take the first part as ID
+    filename = filepath.stem
     parts = filename.split('_')
     return parts[0] if parts else filename
 
@@ -44,9 +42,9 @@ def _should_files_match(passport_path: Path, face_photo_path: Path) -> bool:
 def _assess_match_result(should_match: bool, actual_match: bool) -> str:
     """Assess the difference between expected and actual match results."""
     if should_match and actual_match:
-        return "correct_positive"
+        return "true_positive"
     elif not should_match and not actual_match:
-        return "correct_negative"
+        return "true_negative"
     elif should_match and not actual_match:
         return "false_negative"
     else:  # not should_match and actual_match

@@ -38,12 +38,13 @@ def _detect_first_crop_b64(client: FaceSdk, image_bytes: bytes) -> Optional[str]
     except Exception:
         return None
 
+
 def match_passport_and_selfie(passport_bytes: bytes, selfie_bytes: bytes, threshold: float = 0.85, save_crops: bool = False) -> FaceMatchResult:
     """
     Match passport and selfie images using Regula Face SDK.
     
-    Uses direct REST API with detectAll=True to match website behavior exactly.
     Detects ALL faces in both images and returns the HIGHEST similarity score.
+    This handles ghost portraits and multiple faces in passport images.
     
     Args:
         passport_bytes: Raw bytes of passport image (may contain multiple faces/ghost portraits)
@@ -55,13 +56,13 @@ def match_passport_and_selfie(passport_bytes: bytes, selfie_bytes: bytes, thresh
         FaceMatchResult with the highest similarity score found among all face comparisons
     """
     
-    # Use direct REST API with detectAll=True (EXACT website format)
+    # Use direct REST API with detectAll=True (same as website)
     try:
         import requests
         import base64
         import json
         
-        print("🔍 Using direct REST API with detectAll=True (website format)...")
+        print("🔍 Using direct REST API with detectAll=True...")
         
         # Create EXACT website format with detectAll=True
         request_data = {
@@ -106,7 +107,6 @@ def match_passport_and_selfie(passport_bytes: bytes, selfie_bytes: bytes, thresh
                         all_similarities.append(sim)
                         if sim > best_similarity:
                             best_similarity = sim
-                        print(f"   📊 Similarity: {sim:.4f}")
                 
                 if not all_similarities:
                     return FaceMatchResult(
@@ -116,36 +116,8 @@ def match_passport_and_selfie(passport_bytes: bytes, selfie_bytes: bytes, thresh
                         meta={"api_method": "direct_rest", "raw_response": result}
                     )
                 
-                # Use the HIGHEST similarity found among all face comparisons
-                sim = best_similarity
-                decision = sim >= threshold
-                
-                # Create detailed reason with face comparison info
-                total_comparisons = len(all_similarities)
-                if total_comparisons > 1:
-                    reason = f"ok (best of {total_comparisons} face comparisons)" if decision else f"below threshold {threshold} (best of {total_comparisons} face comparisons)"
-                else:
-                    reason = "ok" if decision else f"below threshold {threshold}"
-
-                # Face crops - not available from direct REST API
-                pcrop = scrop = None
-                if save_crops:
-                    print("⚠️  Face crop extraction not available with direct REST API")
-
-                # Enhanced metadata with detailed face comparison info
-                meta = {
-                    "api_method": "direct_rest_detectall",
-                    "total_face_comparisons": total_comparisons,
-                    "all_similarities": all_similarities,
-                    "best_similarity": best_similarity,
-                    "average_similarity": sum(all_similarities) / len(all_similarities) if all_similarities else 0.0,
-                    "multiple_faces_detected": total_comparisons > 1,
-                    "ghost_portrait_handling": True,
-                    "detection_mode": "detectAll_true_both_images",
-                    "website_compatible": True
-                }
-                
-                return FaceMatchResult(similarity=sim, decision=decision, reason=reason, meta=meta, passport_crop_b64=pcrop, selfie_crop_b64=scrop)
+                # Use direct REST results
+                results = all_similarities  # For compatibility with existing code below
                 
             else:
                 print("❌ REST API returned no results")
@@ -172,3 +144,76 @@ def match_passport_and_selfie(passport_bytes: bytes, selfie_bytes: bytes, thresh
             reason=f"rest_api_exception: {str(e)}",
             meta={"api_method": "direct_rest", "error": str(e)}
         )
+    
+    # Process the results (same logic as before)
+    if not results:
+        return FaceMatchResult(
+            similarity=0.0,
+            decision=False,
+            reason="no_face_comparisons_found",
+            meta={"error": "No face matching results returned"}
+        )
+        
+        # Handle ALL faces - find the HIGHEST similarity among all comparisons
+        results = getattr(resp, "results", []) or []
+        
+        if not results:
+            return FaceMatchResult(
+                similarity=0.0,
+                decision=False,
+                reason="no_face_comparisons_found",
+                meta={"error": "No face matching results returned"}
+            )
+        
+        # Extract all similarity scores and find the BEST one
+        all_similarities = []
+        best_similarity = 0.0
+        
+        for result in results:
+            if result and hasattr(result, 'similarity'):
+                sim = float(getattr(result, "similarity", 0.0) or 0.0)
+                all_similarities.append(sim)
+                if sim > best_similarity:
+                    best_similarity = sim
+            else:
+                all_similarities.append(0.0)
+        
+        # Use the HIGHEST similarity found among all face comparisons
+        sim = best_similarity
+        decision = sim >= threshold
+        
+        # Create detailed reason with face comparison info
+        total_comparisons = len(all_similarities)
+        if total_comparisons > 1:
+            reason = f"ok (best of {total_comparisons} face comparisons)" if decision else f"below threshold {threshold} (best of {total_comparisons} face comparisons)"
+        else:
+            reason = "ok" if decision else f"below threshold {threshold}"
+
+        pcrop = scrop = None
+        if save_crops:
+            pcrop = _detect_first_crop_b64(client, passport_bytes)
+            scrop = _detect_first_crop_b64(client, selfie_bytes)
+
+        # Enhanced metadata with detailed face comparison info
+        meta = {}
+        try:
+            meta = client.api_client.sanitize_for_serialization(resp) if hasattr(client, "api_client") else {}
+            # Add detailed comparison metadata
+            meta.update({
+                "total_face_comparisons": total_comparisons,
+                "all_similarities": all_similarities,
+                "best_similarity": best_similarity,
+                "average_similarity": sum(all_similarities) / len(all_similarities) if all_similarities else 0.0,
+                "multiple_faces_detected": total_comparisons > 1,
+                "ghost_portrait_handling": True,
+                "detection_mode": "all_faces_in_both_images"
+            })
+        except Exception as e:
+            meta = {
+                "metadata_error": str(e),
+                "total_face_comparisons": total_comparisons,
+                "all_similarities": all_similarities,
+                "best_similarity": best_similarity
+            }
+        
+        return FaceMatchResult(similarity=sim, decision=decision, reason=reason, meta=meta, passport_crop_b64=pcrop, selfie_crop_b64=scrop)

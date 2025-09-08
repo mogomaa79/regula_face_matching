@@ -124,7 +124,24 @@ The system automatically detects image types using filename hints:
 
 ## 🏃‍♂️ Usage
 
-### Basic Processing
+### Data Preparation (Download Images from CSV)
+
+If you have CSV files with image URLs, use the download script first:
+
+```bash
+# 1. Place your CSV files in the project root
+# 2. Update CSV_FILES in download_data.py with your file paths
+# 3. Run the download script
+python download_data.py
+```
+
+This will:
+- Create folder structure: `data/{category}/{maid_id}/`
+- Download passport and face images from URLs in the CSV
+- Generate `info.json` files with metadata
+- Prepare data for face matching analysis
+
+### Basic Face Matching
 
 ```bash
 python main.py
