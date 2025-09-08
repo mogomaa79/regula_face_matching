@@ -70,13 +70,13 @@ def match_passport_and_selfie(passport_bytes: bytes, selfie_bytes: bytes, thresh
                     "data": base64.b64encode(passport_bytes).decode('utf-8'),
                     "index": 0,
                     "detectAll": True,
-                    "type": 1
+                    "type": 3
                 },
                 {
                     "data": base64.b64encode(selfie_bytes).decode('utf-8'),
                     "index": 1,
                     "detectAll": True,
-                    "type": 1
+                    "type": 3
                 }
             ]
         }
