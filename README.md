@@ -47,13 +47,12 @@ regula_face_matching/
 Run the Regula Face API locally:
 
 ```bash
-docker run --name faceapi -d \
+docker run -d --name faceapi \
+  --platform=linux/amd64 \
   -p 41101:41101 \
-  -v /path/to/your/regula.license:/opt/regula/regula.license:ro \
-  regulaforensics/face-api:latest
+  -e REGULA_LICENSE="$(base64 -i ~/regula.license | tr -d '\n')" \
+  regulaforensics/face-api
 ```
-
-> **Note**: Adjust the license file path (`/Users/mohamedgomaa/regula.license`) to match your actual license location.
 
 ### 2. Python Environment
 

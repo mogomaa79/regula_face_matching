@@ -12,9 +12,9 @@ from src.utils.sheets_uploader import upload_to_sheets
 
 load_dotenv()
 
-DATA_ROOT = Path(os.getenv("DATA_ROOT", "data/MV"))
-RESULTS_CSV = Path(os.getenv("RESULTS_CSV", "results/MV_results.csv"))
-THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.90"))
+DATA_ROOT = Path(os.getenv("DATA_ROOT", "data/CC"))
+RESULTS_CSV = Path(os.getenv("RESULTS_CSV", "results/CC_results.csv"))
+THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.85"))
 SAVE_CROPS = os.getenv("SAVE_CROPS", "false").lower() == "true"
 CROPS_DIR = Path(os.getenv("CROPS_DIR", "results/crops"))
 
